@@ -14,6 +14,10 @@ from .classifier import BERTClassifier, get_bert
 
 app = FastAPI()
 
+@app.get("/")
+async def read_root():
+    return {"message": "Bem-Vindo a API Boamente"}
+
 class ClassificationRequest(BaseModel):
     text: str
     identificador: str
@@ -45,16 +49,19 @@ def verTermos(text):
     ]
     return any(term in text for term in termos)
 
-# POST -> envia dados
+# POST -> envia dados 
 @app.post("/classifica", response_model=ClassificationResponse)
 async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends(get_bert)):
     texto = preProText(rqt.text)
     identificador = rqt.identificador
     datetime = rqt.datetime
 
-	# POST servidor
-    url = 'https://boamente.minhadespesa.com.br/api/predicoes/store'
-    token = 'wocUKkW9GNLxetcJLfirFdPsTfiBkv4eH4pfG7k2Lu8'
+	# envia dados para esta url como destino -> envia info como probabilidade...
+    # url = 'https://boamente.minhadespesa.com.br/api/predicoes/store'
+    # token = 'wocUKkW9GNLxetcJLfirFdPsTfiBkv4eH4pfG7k2Lu8'
+    # config dps de mecher no teclado virtual?
+    url = "http://192.168.1.10:8000/classifica"
+
 
     if verTermos(texto):
         try:
@@ -70,7 +77,7 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
         sentiment, probabilities = "Neutral", {}
 
     payload = {
-        'token': token,
+        #'token': token,
         'identificador': identificador,
         'probabilidade': probabilidade, 
         'possibilidade': possibilidade,
@@ -79,10 +86,10 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
 
     try:
         async with httpx.AsyncClient() as client:
-            resposta = await client.post(url, data=payload)
+            resposta = await client.post(url, json=payload)
             resposta.raise_for_status()
     except httpx.HTTPError as e:
-        raise RuntimeError(f"Erro ao enviar os dados: {e}")
+        raise RuntimeError(f"Erro ao conectar ao servidor remoto: {str(e)}")
 
     return ClassificationResponse(
         sentiment=sentiment,
