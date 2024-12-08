@@ -9,7 +9,7 @@ Esta API utiliza o FastAPI, e recebe textos de uma aplicação de teclado virtua
 * `pip install requirements.txt`
 * `bash bin/run_server`
 
-## TEclado Virtual
+## Teclado Virtual
 * [AnySoftKeyboard](https://github.com/RosanaCeline/AnySoftKeyboard)
 
 ## References
