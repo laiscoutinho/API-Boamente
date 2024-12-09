@@ -14,10 +14,6 @@ from .classifier import BERTClassifier, get_bert
 
 app = FastAPI()
 
-@app.get("/")
-async def read_root():
-    return {"message": "Bem-Vindo a API Boamente"}
-
 class ClassificationRequest(BaseModel):
     text: str
     identificador: str
@@ -49,7 +45,7 @@ def verTermos(text):
     ]
     return any(term in text for term in termos)
 
-# POST -> envia dados 
+# POST
 @app.post("/classifica", response_model=ClassificationResponse)
 async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends(get_bert)):
     texto = preProText(rqt.text)
@@ -90,6 +86,32 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
             resposta.raise_for_status()
     except httpx.HTTPError as e:
         raise RuntimeError(f"Erro ao conectar ao servidor remoto: {str(e)}")
+
+    return ClassificationResponse(
+        sentiment=sentiment,
+        confidence=probabilidade,
+        probabilities=probabilities
+    )
+
+# GET
+@app.get("/", response_model=ClassificationResponse)
+async def root(text: str = "", model: BERTClassifier = Depends(get_bert)):
+    if not text:
+        return {"message": "Envie o texto como parâmetro 'text'"}
+
+    texto = preProText(text)
+
+    if verTermos(texto):
+        try:
+            sentiment, confidence, probabilities = model.predict(texto)
+            probabilidade = round(float(confidence), 5)
+            possibilidade = int(sentiment)
+        except Exception as e:
+            raise RuntimeError(f"Erro ao realizar a predição: {e}")
+    else:
+        probabilidade = 0.0
+        possibilidade = 0
+        sentiment, probabilities = "Neutral", {}
 
     return ClassificationResponse(
         sentiment=sentiment,
