@@ -52,11 +52,7 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
     identificador = rqt.identificador
     datetime = rqt.datetime
 
-	# envia dados para esta url como destino -> envia info como probabilidade...
-    # url = 'https://boamente.minhadespesa.com.br/api/predicoes/store'
-    # token = 'wocUKkW9GNLxetcJLfirFdPsTfiBkv4eH4pfG7k2Lu8'
-    # config dps de mecher no teclado virtual?
-    url = "http://192.168.1.10:8000/classifica"
+    url = "http://127.0.0.1:8000/classifica"
 
 
     if verTermos(texto):
@@ -97,7 +93,11 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
 @app.get("/", response_model=ClassificationResponse)
 async def root(text: str = "", model: BERTClassifier = Depends(get_bert)):
     if not text:
-        return {"message": "Envie o texto como parâmetro 'text'"}
+        return ClassificationResponse(
+            sentiment="Neutral",
+            confidence=0.0,
+            probabilities={}
+        )
 
     texto = preProText(text)
 
@@ -105,12 +105,12 @@ async def root(text: str = "", model: BERTClassifier = Depends(get_bert)):
         try:
             sentiment, confidence, probabilities = model.predict(texto)
             probabilidade = round(float(confidence), 5)
-            possibilidade = int(sentiment)
+            probabilities = int(sentiment)
         except Exception as e:
             raise RuntimeError(f"Erro ao realizar a predição: {e}")
     else:
         probabilidade = 0.0
-        possibilidade = 0
+        probabilities = 0
         sentiment, probabilities = "Neutral", {}
 
     return ClassificationResponse(
@@ -118,3 +118,7 @@ async def root(text: str = "", model: BERTClassifier = Depends(get_bert)):
         confidence=probabilidade,
         probabilities=probabilities
     )
+
+@app.get("/favicon.ico")
+async def favicon():
+    return {"message": "Favicon não configurado."}
