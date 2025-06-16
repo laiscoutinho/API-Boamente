@@ -10,6 +10,8 @@ from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
 from .classifier import BERTClassifier, get_bert
 
+import requests
+
 
 # import requests
 # from starlette.requests import Request
@@ -18,6 +20,7 @@ from .classifier import BERTClassifier, get_bert
 
 app = FastAPI()
 
+#Obs: Rodar .\venv\Scripts\Activate para ativar o ambiente
 
 class ClassificationRequest(BaseModel):
    text: str
@@ -85,18 +88,41 @@ def classify_text_logic(text, model):
 
    return sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados
 
+def enviar_para_backend(resultado_classificacao):
+    backend_url = "http://localhost:8080/classification/receive"
+    try:
+        resultado_classificacao
+        response = requests.post(backend_url, json=resultado_classificacao)
+        response.raise_for_status()
+        print("Enviado com sucesso! Resposta do backend:")
+        print(response.text)
+    except Exception as e:
+        print(f"Erro ao enviar pro backend: {e}")
+
 
 # Endpoint POST para classificação
 @app.post("/classifica", response_model=ClassificationResponse)
 async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends(get_bert)):
-   sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados = classify_text_logic(rqt.text, model)
+    sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados = classify_text_logic(rqt.text, model)
 
+    # Monta o dicionário que será enviado para o backend Java
+    resultado_classificacao = {
+        "UUID": rqt.identificador,
+        "datetime": rqt.datetime,
+        "sentiment": sentiment,
+        "confidence": probabilidade,
+        "probabilities": probabilities
+    }
 
-   return ClassificationResponse(
-       sentiment=sentiment,
-       confidence=probabilidade,
-       probabilities={str(k): v for k, v in probabilities.items()}
-   )
+    # Envia para o backend
+    enviar_para_backend(resultado_classificacao)
+
+    # Retorna a resposta normalmente
+    return ClassificationResponse(
+        sentiment=sentiment,
+        confidence=probabilidade,
+        probabilities={str(k): v for k, v in probabilities.items()}
+    )
 
 
 # Endpoint GET para classificação
