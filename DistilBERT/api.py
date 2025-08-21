@@ -20,6 +20,7 @@ import requests
 
 app = FastAPI()
 
+# uvicorn DistilBERT.api:app --reload --port 8000
 #Obs: Rodar .\venv\Scripts\Activate para ativar o ambiente
 
 class ClassificationRequest(BaseModel):
@@ -54,7 +55,7 @@ def verTermos(text):
        "melhor sem mim", "vou me matar", "plano de suicídio",
        "cansado de viver", "morrer sozinho", "vida", "morte", "morrer",
        "sozinho", "sozinha", "solidão", "solidao", "tristeza", "triste", "depressão",
-       "depressao", "depressivo", "depressiva",
+       "depressao", "depressivo", "depressiva", "morrendo"
    ]
    termos_encontrados = [term for term in termos if term in text]
    termos_na_classificacao = len(termos_encontrados)
@@ -81,10 +82,13 @@ def classify_text_logic(text, model):
        except Exception as e:
            raise RuntimeError(f"Erro ao realizar a predição: {e}")
    else:
-       probabilidade = 0.0
-       sentiment = "Neutral"
-       probabilities = {}
-
+    probabilidade = 0.0
+    sentiment = "NEUTRAL"
+    probabilities = {
+        "POSITIVE": 0.0,
+        "NEUTRAL": 1.0,
+        "NEGATIVE": 0.0
+    }
 
    return sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados
 
@@ -104,7 +108,7 @@ def enviar_para_backend(resultado_classificacao):
 @app.post("/classifica", response_model=ClassificationResponse)
 async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends(get_bert)):
     sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados = classify_text_logic(rqt.text, model)
-
+    
     # Monta o dicionário que será enviado para o backend Java
     resultado_classificacao = {
         "UUID": rqt.identificador,
@@ -130,7 +134,7 @@ async def classifica(rqt: ClassificationRequest, model: BERTClassifier = Depends
 async def root(text: str = "", model: BERTClassifier = Depends(get_bert)):
    if not text:
        return ClassificationResponse(
-           sentiment="Neutral",
+           sentiment="NEUTRAL",
            confidence=0.0,
            probabilities={}
        )
