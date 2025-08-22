@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
 from .classifier import BERTClassifier, get_bert
 
+import os
 import requests
 
 
@@ -19,6 +20,9 @@ import requests
 
 
 app = FastAPI()
+
+# URL do backend em desenvolvimento
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
 
 # uvicorn DistilBERT.api:app --reload --port 8000
 #Obs: Rodar .\venv\Scripts\Activate para ativar o ambiente
@@ -66,9 +70,6 @@ def verTermos(text):
    # vai retornar qualquer texto que esteja contido na lista de termos
    # return any(term in text for term in termos)
 
-
-
-
 # Função comum para classificação de texto
 def classify_text_logic(text, model):
    texto = preProText(text)
@@ -83,6 +84,7 @@ def classify_text_logic(text, model):
            raise RuntimeError(f"Erro ao realizar a predição: {e}")
    else:
     probabilidade = 0.0
+    confidence = 1
     sentiment = "NEUTRAL"
     probabilities = {
         "POSITIVE": 0.0,
@@ -93,7 +95,7 @@ def classify_text_logic(text, model):
    return sentiment, probabilidade, probabilities, termos_na_classificacao, termos_totais, termos_encontrados
 
 def enviar_para_backend(resultado_classificacao):
-    backend_url = "http://localhost:8080/classification/receive"
+    backend_url = f"{BACKEND_URL}/classification/receive"
     try:
         resultado_classificacao
         response = requests.post(backend_url, json=resultado_classificacao)
